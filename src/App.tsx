@@ -80,11 +80,28 @@ export default function App() {
         body: JSON.stringify({ messages: currentConversation })
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Server error occurred');
+        let errorMsg = 'Server error occurred';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMsg = errorData.error || errorMsg;
+          } else {
+            const textResponse = await response.text();
+            if (textResponse && textResponse.length < 300 && !textResponse.includes('<html')) {
+              errorMsg = textResponse;
+            } else {
+              errorMsg = `Server error (Status ${response.status}): ${response.statusText || 'Unable to load valid JSON response'}`;
+            }
+          }
+        } catch {
+          errorMsg = `Server error (Status ${response.status}): ${response.statusText || 'Unknown error'}`;
+        }
+        throw new Error(errorMsg);
       }
+
+      const data = await response.json();
 
       const botMessage: Message = {
         id: `bot-${Date.now()}`,
@@ -405,15 +422,27 @@ export default function App() {
 
           {/* Operational Errors Banner */}
           {errorInput && (
-            <div className="px-6 py-3 border-t border-rose-100 bg-rose-50 text-rose-800 flex items-start gap-3">
+            <div className="px-6 py-4 border-t border-rose-100 bg-rose-50 text-rose-800 flex items-start gap-4">
               <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
               <div className="flex-1 text-xs">
-                <h5 className="font-bold text-rose-900 mb-0.5">AI Proxy Server Alert</h5>
-                <p>{errorInput}</p>
+                <h5 className="font-bold text-rose-900 mb-1">AI Proxy Server Alert</h5>
+                <p className="leading-relaxed font-semibold">{errorInput}</p>
+                {/* Specific troubleshooting guide for permission denied or key errors */}
+                {(errorInput.includes("PERMISSION_DENIED") || errorInput.toLowerCase().includes("permission_denied") || errorInput.toLowerCase().includes("denied access") || errorInput.includes("403")) && (
+                  <div className="mt-2.5 p-3.5 bg-white border border-rose-200 rounded-lg text-[11px] text-rose-900 space-y-1.5 shadow-sm">
+                    <p className="font-bold">❌ Google Gemini API access was denied.</p>
+                    <p>To resolve this restriction and make queries successful:</p>
+                    <ul className="list-disc list-inside space-y-1 text-rose-800 ml-1">
+                      <li>On **Vercel**: Go to your Project Settings → **Environment Variables**, ensure the name is <code className="px-1 py-0.5 bg-rose-50 border border-rose-100 rounded font-bold font-mono">GEMINI_API_KEY</code>, and re-trigger a deployment.</li>
+                      <li>On **AI Studio**: Make sure you have entered active keys in the **Secrets/Environment Variable** side panel.</li>
+                      <li>Verify that your API key is correct, active, has Gemini API access, and is not expired or blocked by GCP.</li>
+                    </ul>
+                  </div>
+                )}
               </div>
               <button 
                 onClick={() => setErrorInput(null)} 
-                className="text-xs text-rose-600 hover:text-rose-900 font-bold underline shrink-0 cursor-pointer"
+                className="text-xs text-rose-600 hover:text-rose-900 font-extrabold underline shrink-0 cursor-pointer self-start"
               >
                 Dismiss
               </button>
