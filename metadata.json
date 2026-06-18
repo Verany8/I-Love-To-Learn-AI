@@ -1,0 +1,6 @@
+{
+  "name": "I love TO LEARN AI",
+  "description": "A simple chatbot application about artificial intelligence, powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
